@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "item_sink:block/item_sink_top",
+    "side": "item_sink:block/item_sink_side"
+  }
+}

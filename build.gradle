@@ -1,0 +1,149 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.147'
+    id 'idea'
+}
+
+group = 'com.ourcreation.itemsink'
+version = mod_version
+def withoutNumismatics = providers.gradleProperty('withoutNumismatics').isPresent()
+base.archivesName = 'create_item_sink'
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+sourceSets {
+    gametest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    gametestImplementation.extendsFrom implementation
+    gametestCompileOnly.extendsFrom compileOnly
+    gametestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+repositories {
+    maven {
+        name = 'Create'
+        url = 'https://maven.createmod.net'
+        content { includeGroup 'net.createmod.ponder' }
+    }
+    maven {
+        name = 'JEI'
+        url = 'https://maven.blamejared.com'
+        content { includeGroup 'mezz.jei' }
+    }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
+
+legacyForge {
+    version = "${minecraft_version}-${forge_version}"
+    addModdingDependenciesTo(sourceSets.gametest)
+    mods {
+        item_sink { sourceSet sourceSets.main }
+        item_sink_tests { sourceSet sourceSets.gametest }
+    }
+    runs {
+        client {
+            client()
+            loadedMods = [mods.item_sink]
+        }
+        server {
+            server()
+            loadedMods = [mods.item_sink]
+            programArgument '--nogui'
+        }
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            gameDirectory = layout.projectDirectory.dir(withoutNumismatics ? 'run-gametest-without-numismatics' : 'run-gametest')
+            jvmArguments.add('-Xmx2G')
+            systemProperty 'forge.enabledGameTestNamespaces', 'item_sink_tests'
+        }
+    }
+}
+
+dependencies {
+    // Create supplies Ponder at runtime; only its API is needed to compile our scenes.
+    modCompileOnly("net.createmod.ponder:Ponder-Forge-${minecraft_version}:${ponder_version}") {
+        transitive = false
+    }
+    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"
+    modRuntimeOnly "mezz.jei:jei-${minecraft_version}-forge:${jei_version}"
+    modRuntimeOnly "maven.modrinth:create:${create_version}"
+    if (!withoutNumismatics) {
+        modRuntimeOnly "maven.modrinth:numismatics:${numismatics_version}"
+    }
+}
+
+// All resources use Minecraft 1.20.1 paths and live inside this project.
+def metadataProperties = [mod_version: mod_version]
+
+tasks.named('processResources', ProcessResources) {
+    inputs.properties metadataProperties
+    exclude '**/*.bbmodel'
+    filesMatching('META-INF/mods.toml') {
+        expand metadataProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+tasks.named('jar', Jar) {
+    from('LICENSE')
+    from('TEMPLATE_LICENSE.txt')
+}
+
+tasks.register('verifyTranslations') {
+    group = 'verification'
+    description = 'Checks language coverage, translation keys and format placeholders.'
+    def languageDirectory = layout.projectDirectory.dir('src/main/resources/assets/item_sink/lang')
+    def localeFile = layout.projectDirectory.file('tools/minecraft-1.20.1-locales.json')
+    inputs.dir(languageDirectory)
+    inputs.file(localeFile)
+    doLast {
+        def parser = new groovy.json.JsonSlurper()
+        def english = parser.parse(languageDirectory.file('en_us.json').asFile)
+        def locales = parser.parse(localeFile.asFile)
+        def placeholders = { text -> (text =~ /%(?:\d+\$)?[a-zA-Z%]/).collect().sort() }
+        def errors = []
+        locales.each { locale ->
+            def languageFile = languageDirectory.file("${locale}.json").asFile
+            if (!languageFile.isFile()) {
+                errors.add("${locale}: missing language file")
+                return
+            }
+            def translated = parser.parse(languageFile)
+            if (translated.keySet() != english.keySet()) {
+                errors.add("${locale}: missing ${english.keySet() - translated.keySet()}, unexpected ${translated.keySet() - english.keySet()}")
+            }
+            english.each { key, source ->
+                def text = translated[key]
+                if (!(text instanceof String) || text.isBlank()) {
+                    errors.add("${locale}: empty or invalid ${key}")
+                } else if (placeholders(text) != placeholders(source)) {
+                    errors.add("${locale}: invalid format placeholders in ${key}")
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new GradleException(errors.join('\n'))
+        }
+        logger.lifecycle("Verified ${locales.size()} locales with ${english.size()} translation keys each.")
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyTranslations')
+}
+
+idea.module.downloadSources = true

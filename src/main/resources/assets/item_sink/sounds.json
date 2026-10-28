@@ -1,0 +1,8 @@
+{
+  "electric_motor_buzz": {
+    "subtitle": "subtitles.item_sink.electric_motor_buzz",
+    "sounds": [
+      "item_sink:electric_motor_buzz"
+    ]
+  }
+}
