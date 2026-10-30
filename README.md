@@ -2,10 +2,18 @@
 
 A configurable Create addon that converts unwanted items into currency.
 
-Targets Minecraft 1.20.1, Forge 47.4.0+, Create 6.0.x and Java 17.
+Version **0.0.3** for Minecraft 1.20.1, Forge 47.4.0+, Create 6.0.x and Java 17.
+
+Download the jar from [Releases](https://github.com/IWasCool/create-item-sink-forge/releases) and place it in your client and server's `mods` folders alongside Create.
 
 Create: Numismatics and JEI are optional. Currency outputs can be changed in `config/item_sink-common.toml`.
 
+Right-click the sink to open it. Insert unwanted items and supply Forge Energy to convert them into currency. Hold **W** over the item to view its Ponder tutorials.
+
+Mine the Item Sink with any pickaxe to recover the machine. Its stored items drop separately.
+
 Includes two Ponder tutorials and initial translations for all 143 Minecraft 1.20.1 language options. Translation corrections are welcome.
+
+Build from source with `./gradlew build` or `gradlew.bat build` on Windows. The jar is written to `build/libs/`.
 
 The code is available to view, reuse, modify and port under the [MIT license](LICENSE).

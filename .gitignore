@@ -40,5 +40,7 @@ run-gametest*/
 repo/
 !**/src/**/repo/
 
-### Item value audit tools ###
-tools/__pycache__/
+### Local development files ###
+/src/gametest/
+/docs/
+/tools/
